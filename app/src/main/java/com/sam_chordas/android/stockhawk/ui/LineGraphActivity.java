@@ -68,6 +68,8 @@ public class LineGraphActivity extends AppCompatActivity {
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         if (savedInstanceState != null && savedInstanceState.containsKey("company_name")) {
+            isLoaded = true;
+
             companyName = savedInstanceState.getString("company_name");
             labels = savedInstanceState.getStringArrayList("labels");
             values = new ArrayList<>();
@@ -147,7 +149,7 @@ public class LineGraphActivity extends AppCompatActivity {
         LineGraphActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                isLoaded = true;
+                setTitle(companyName);
 
                 progressCircle.setVisibility(View.GONE);
                 errorMessage.setVisibility(View.GONE);
@@ -157,11 +159,13 @@ public class LineGraphActivity extends AppCompatActivity {
                 for (int i = 0; i < labels.size(); i++) {
                     series.addPoint(new ValueLinePoint(labels.get(i), values.get(i)));
                 }
+                if (!isLoaded) {
+                    lineChart.startAnimation();
+                }
                 lineChart.addSeries(series);
                 lineChart.setVisibility(View.VISIBLE);
-                lineChart.startAnimation();
 
-                setTitle(companyName);
+                isLoaded = true;
             }
         });
     }
