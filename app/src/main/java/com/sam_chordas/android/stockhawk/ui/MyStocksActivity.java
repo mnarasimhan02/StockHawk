@@ -39,35 +39,20 @@ import com.sam_chordas.android.stockhawk.touch_helper.SimpleItemTouchHelperCallb
 
 public class MyStocksActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>{
 
-  /**
-   * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
-   */
-
-  /**
-   * Used to store the last screen title. For use in {@link #restoreActionBar()}.
-   */
-  private CharSequence mTitle;
-  private Intent mServiceIntent;
-  private ItemTouchHelper mItemTouchHelper;
   private static final int CURSOR_LOADER_ID = 0;
-  private QuoteCursorAdapter mCursorAdapter;
+
   private Context mContext;
-  private Cursor mCursor;
-  boolean isConnected;
-
+  private CharSequence mTitle;
   private TextView textMessage;
+  private Intent mServiceIntent;
+  private QuoteCursorAdapter mCursorAdapter;
 
+  // Activity Life Cycle
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    mContext = this;
-    ConnectivityManager cm =
-            (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-
-    NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-    isConnected = activeNetwork != null &&
-            activeNetwork.isConnectedOrConnecting();
     setContentView(R.layout.activity_my_stocks);
+    mContext = this;
 
     textMessage = (TextView) findViewById(R.id.text_message);
     // The intent service is for executing immediate pulls from the Yahoo API
@@ -76,7 +61,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     if (savedInstanceState == null){
       // Run the initialize task service so that some stocks appear upon an empty database
       mServiceIntent.putExtra("tag", "init");
-      if (isConnected){
+      if (isConnected()){
         startService(mServiceIntent);
       }
     }
@@ -108,7 +93,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     fab.attachToRecyclerView(recyclerView);
     fab.setOnClickListener(new View.OnClickListener() {
       @Override public void onClick(View v) {
-        if (isConnected){
+        if (isConnected()){
           new MaterialDialog.Builder(mContext).title(R.string.symbol_search)
                   .content(R.string.content_test)
                   .inputType(InputType.TYPE_CLASS_TEXT)
@@ -144,11 +129,11 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     });
 
     ItemTouchHelper.Callback callback = new SimpleItemTouchHelperCallback(mCursorAdapter);
-    mItemTouchHelper = new ItemTouchHelper(callback);
+    ItemTouchHelper mItemTouchHelper = new ItemTouchHelper(callback);
     mItemTouchHelper.attachToRecyclerView(recyclerView);
 
     mTitle = getTitle();
-    if (isConnected){
+    if (isConnected()){
       long period = 3600L;
       long flex = 10L;
       String periodicTag = "periodic";
@@ -171,9 +156,15 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     // Setup UI
     refreshLayout();
   }
+  @Override
+  public void onResume() {
+    super.onResume();
+    getLoaderManager().restartLoader(CURSOR_LOADER_ID, null, this);
+  }
 
+  // Helper Methods
   public void refreshLayout() {
-    if (isConnected) {
+    if (isConnected()) {
       if (mCursorAdapter.getItemCount() == 0) {
         textMessage.setText(R.string.none_selected);
         textMessage.setVisibility(View.VISIBLE);
@@ -190,31 +181,29 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
       }
     }
   }
-
-  @Override
-  public void onResume() {
-    super.onResume();
-    getLoaderManager().restartLoader(CURSOR_LOADER_ID, null, this);
-  }
-
   public void networkToast(){
     Toast.makeText(mContext, getString(R.string.network_toast), Toast.LENGTH_SHORT).show();
   }
+  private boolean isConnected() {
+    ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+    NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+    return (activeNetwork != null &&
+            activeNetwork.isConnectedOrConnecting());
+  }
 
+  // ActionBar
   public void restoreActionBar() {
     ActionBar actionBar = getSupportActionBar();
     actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
     actionBar.setDisplayShowTitleEnabled(true);
     actionBar.setTitle(mTitle);
   }
-
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
     getMenuInflater().inflate(R.menu.my_stocks, menu);
     restoreActionBar();
     return true;
   }
-
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     // Handle action bar item clicks here. The action bar will
@@ -232,6 +221,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     return super.onOptionsItemSelected(item);
   }
 
+  // Cursor Loader
   @Override
   public Loader<Cursor> onCreateLoader(int id, Bundle args){
     // This narrows the return to only the stocks that are most current.
@@ -242,13 +232,10 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
             new String[]{"1"},
             null);
   }
-
   @Override
   public void onLoadFinished(Loader<Cursor> loader, Cursor data){
     mCursorAdapter.swapCursor(data);
-    mCursor = data;
   }
-
   @Override
   public void onLoaderReset(Loader<Cursor> loader){
     mCursorAdapter.swapCursor(null);
